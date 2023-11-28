@@ -1,0 +1,18 @@
+{
+  "main": "lib/binding.js",
+  "dependencies": {
+    "node-addon-api": "^1.1.0"
+  },
+  "scripts": {
+    "install": "node-gyp rebuild"
+  },
+  "gypfile": true,
+  "name": "chem-trep",
+  "version": "1.0.0",
+  "directories": {
+    "lib": "lib"
+  },
+  "author": "rs",
+  "license": "ISC",
+  "description": "Chemical substructure search library for node js"
+}
