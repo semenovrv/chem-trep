@@ -1,4 +1,4 @@
-#include "chem-trep.h"
+#include "napi.chem.h"
 #include "simple_molecule.h"
 #include "svg_molecule.h"
 #include "edited_molecule.h"
