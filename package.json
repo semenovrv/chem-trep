@@ -1,4 +1,9 @@
 {
+  "name": "@semenovrv/chem-trep",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/semenovrv/chem-trep.git"
+  },
   "main": "lib/binding.js",
   "dependencies": {
     "node-addon-api": "^1.1.0"
