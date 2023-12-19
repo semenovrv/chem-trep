@@ -12,7 +12,7 @@
   },
   "gypfile": true,
   "name": "chem-trep",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "directories": {
     "lib": "lib"
   },
