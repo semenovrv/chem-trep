@@ -122,6 +122,40 @@ namespace MolStruct {
 
 
 
+	void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData,const std::string rec, bool numerationOutput, int imgWidth, int imgHeight){
+		MolStruct::TSVGMolecule test;
+		std::vector<std::vector<int>*> ringList;
+		int nTotalCycles, nAromFive, nAromSixs, nCondensed;
+		int i,n;
+		double xU, yU, d;
+
+		test.moleculeCopy(sm);
+		test.removeExplicitHydrogens();
+		test.defineAtomConn();
+		test.options.fIOPT1 = 1;
+		d = test.averageBondLength();
+		if (d == 0) d = 30;
+		for (i = test.nAtoms() - 1; i>=0; i--) {
+			n = test.getAtom(i)->iz / 3;
+			while (n > 0) {
+				test.unitVector(i, xU, yU);
+				xU = test.getAtom(i)->rx + xU*d;
+				yU = test.getAtom(i)->ry + yU*d;
+				test.addAtom(ID_ZVEZDA, 0, xU, yU);
+				test.addBond(1, i, test.nAtoms() - 1);
+				test.defineAtomConn();
+				n--;
+			}
+		}
+
+		test.allAboutCycles();
+		test.cyclesCalculate(nTotalCycles, nAromFive, nAromSixs, nCondensed, &ringList);
+		test.getSVG(imgWidth, imgHeight, ringList, svgData, true, numerationOutput,rec);
+
+		for (i = 0; i < ringList.size(); i++) delete(ringList[i]);
+	}
+
+
 	void TSVGMolecule::dotLineSVG(double x1, double y1, double x2, double y2, std::vector<std::string> & outBuffer) const {
 		double	siX, siY, cs, si, tg, r1, r2, dx;
 		bool test;
@@ -1469,6 +1503,164 @@ namespace MolStruct {
 
 		return result;
 	};
+
+
+
+
+
+
+
+	double	TSVGMolecule::_getMW() const{
+	double result=0;
+	int j,k;
+	for (j=0; j<nAtoms(); j++) { 
+		k=getAtom(j)->nv;
+		k=k-getAtom(j)->currvalence-abs(getAtom(j)->nc)-getAtom(j)->rl;
+		if (k < 0) k=0;
+		result=result+aMass[getAtom(j)->na]+k*aMass[1];
+	};
+	return result;
+	}
+
+	std::string TSVGMolecule::getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw,const std::string rec){
+		double dNorm, dd, dScale, xMin, xMax, yMin, yMax;
+		double xCorr, yCorr;
+		int i;
+		int bmWInternal, bmHInternal;
+		std::string s;
+		std::string s1, s2;
+		std::vector<std::string> parList, atomProperties;
+		std::vector<int> redBonds;
+
+		std::string result = "";
+
+		if (nAtoms() == 0) return result;
+		bmWInternal = bmWidth - 2 * svgMarginXPix;
+		bmHInternal = bmHeight - 2 * svgMarginYPix;
+		if ((bmWInternal < 30) || (bmHInternal < 20)) return result;
+
+
+		//defineConn;
+		//determineFormula;
+		//allAboutCycles;
+
+		dNorm = averageBondLength();
+		if (nBonds() == 0) dNorm = 0;
+		if (dNorm <= 0) dNorm = averageAtomDistance() / 2;
+		if (dNorm > 0)  for (i = 0; i < nAtoms(); i++) {  //Pixels coordinates
+			getAtom(i)->rx = getAtom(i)->rx * fRecommendedBondLengthPix / dNorm;
+			getAtom(i)->ry = getAtom(i)->ry * fRecommendedBondLengthPix / dNorm;
+		};
+		xMin = getAtom(0)->rx;
+		xMax = getAtom(0)->rx;
+		yMin = getAtom(0)->ry;
+		yMax = getAtom(0)->ry;
+		for (i = 0; i < nAtoms(); i++) {
+			dd = getAtom(i)->rx;
+			if (dd < xMin) xMin = dd;
+			if (dd > xMax) xMax = dd;
+			dd = getAtom(i)->ry;
+			if (dd < yMin) yMin = dd;
+			if (dd > yMax) yMax = dd;
+		};
+		//scale and shift
+		if (dNorm == 0) {
+			//single atom
+			getAtom(0)->rx = svgMarginXPix + bmWInternal / 2;
+			getAtom(0)->ry = svgMarginYPix + bmHInternal / 2;
+			dScale = 1;
+		}
+		else {
+			//shift atoms
+			xCorr = svgMarginXPix;
+			yCorr = svgMarginYPix;
+			if (((xMax - xMin) <= bmWInternal) && ((yMax - yMin) <= bmHInternal)) {
+				//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
+				xCorr = xCorr + (bmWInternal - (xMax - xMin)) / 2;
+				yCorr = yCorr + (bmHInternal - (yMax - yMin)) / 2;
+				for (i = 0; i < nAtoms(); i++) {
+					getAtom(i)->rx = (getAtom(i)->rx - xMin) + xCorr;
+					getAtom(i)->ry = (getAtom(i)->ry - yMin) + yCorr;
+				};
+				dScale = 1;
+			}
+			else {
+				//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
+				if (((xMax - xMin) / bmWInternal) > ((yMax - yMin) / bmHInternal)) {
+					//X range is too high- squizeeng by X
+					dScale = (xMax - xMin) / bmWInternal;        //small scale  - will be divider...
+					xCorr = svgMarginXPix;
+					yCorr = (yMax - yMin) / dScale;
+					yCorr = (bmHeight - yCorr) / 2;
+				}
+				else {
+					dScale = (yMax - yMin) / bmHInternal;
+					yCorr = svgMarginYPix;
+					xCorr = (xMax - xMin) / dScale;
+					xCorr = (bmWidth - xCorr) / 2;
+				};
+				for (i=0; i<nAtoms(); i++){
+					getAtom(i)->rx = (getAtom(i)->rx - xMin) + xCorr;
+					getAtom(i)->ry = (getAtom(i)->ry - yMin) + yCorr;
+				};
+			};
+		};
+		parList.clear();
+		parList.push_back(std::to_string(bmWidth));
+		parList.push_back(std::to_string(bmHeight));
+		parList.push_back(std::to_string(bmWidth));
+		parList.push_back(std::to_string(bmHeight));
+
+		s = format("<svg width=\"{}\" height=\"{}\" viewbox=\"0 0 {} {}\"  xmlns=\"http://www.w3.org/2000/svg\">", parList); //[bmWidth, bmHeight, bmWidth, bmHeight]);
+		outBuffer.push_back(s);
+
+		parList.clear();
+		parList.push_back(svgDefaultAtomBackColor);
+		parList.push_back(svgDefaultAtomBackColor);
+		parList.push_back(svgDefaultAtomBackColor);
+		parList.push_back(svgDefaultAtomBackColor);
+		parList.push_back(svgDefaultAtomFontColor);
+
+		s = format("<style type=\"text/css\"><![CDATA[ circle { stroke: {}; fill: {}; stroke-width: 1.0;} rect { stroke: {}; fill: {}; stroke-width: 1.0;} text { stroke-width: 0; fill: {}} line { stroke: black;} ]]></style>", parList); //[SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomFontColor]);
+		outBuffer.push_back(s);
+
+		s = "";
+		if (dScale != 1) {
+			dScale = 1 / dScale;
+			s= formatPrecision(dScale,5);
+			s = format("transform=\"scale({})\"", s);
+		};
+		parList.clear();
+		parList.push_back(std::to_string(fSVGFontHeight));
+		parList.push_back(fSVGFontFamilyName);
+		parList.push_back(s);
+		s = format("<g font-size=\"{}\" font-family=\"{}\" stroke=\"black\" stroke-width=\"1\" fill=\"black\" {}>", parList); //[RecommendedFontHeight, fontFamilyName, s]);
+		outBuffer.push_back(s);
+
+		parList.clear();
+		parList.push_back(std::to_string(bmWidth));
+		parList.push_back(std::to_string(bmHeight));
+		s = format("<rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" />", parList);
+		outBuffer.push_back(s);
+
+
+
+		s = svgSaveInternal(atomProperties, redBonds, ringList, arrowDrawIsotope, numerationDraw);
+		outBuffer.push_back(s);
+		outBuffer.push_back("</g>");
+		outBuffer.push_back("<script data-fieldname=\"mdl-record\" type=\"text/plain\">");
+			outBuffer.push_back(rec);outBuffer.push_back("</script>");
+		outBuffer.push_back("<script data-fieldname=\"mw\" type=\"text/plain\">");
+			outBuffer.push_back(std::to_string(_getMW()));outBuffer.push_back("</script>");
+		outBuffer.push_back("<script data-fieldname=\"molweight\" type=\"text/plain\">");
+			outBuffer.push_back(std::to_string(getMolWeight()));outBuffer.push_back("</script>");
+		outBuffer.push_back("<script data-fieldname=\"formula\" type=\"text/plain\">");
+			outBuffer.push_back(getMolformula(true));outBuffer.push_back("</script>");
+		outBuffer.push_back("</svg>");
+		return result;
+	};
+
+
 
 
 };//namespace

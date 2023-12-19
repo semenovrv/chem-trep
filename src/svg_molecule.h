@@ -31,6 +31,7 @@ protected:
 	double cosB(int b1, int b2) const;
 	double xDist(int aN, int bN) const;
 	std::string  arrowDrawSVG(std::vector<std::string> & polygonList);
+	double	_getMW() const;
 
 public:
 	const static int		svgMarginXPix = 15;
@@ -57,6 +58,7 @@ public:
 
 
 	std::string getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
+	std::string getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw,const std::string rec);
 	TSVGMolecule() : TSimpleMolecule() {
 		svgDefaultAtomBackColor = "white";// RGB(255, 255, 255)";
 		svgDefaultAtomFontColor = "black";// RGB(0, 0, 0)";
@@ -75,8 +77,8 @@ public:
 
 	};
 };
-
 void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData, bool numerationOutput, int imgWidth= SVG_IMAGE_WIDTH, int imgHeight= SVG_IMAGE_HEIGHT);
+void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData, const std::string rec, bool numerationOutput, int imgWidth= SVG_IMAGE_WIDTH, int imgHeight= SVG_IMAGE_HEIGHT);
 
 } // namespace MolStruct
 #endif

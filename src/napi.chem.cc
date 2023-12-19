@@ -37,7 +37,7 @@ if(smol.readMolfile(mis)&&smol.nAtoms()>0){
 	smol.allAboutCycles();
 	if((result=((MolStruct::TEditedMolecule*)query)->fragmentSearch(&smol,NULL))&&((Search_Mode*)mode)->mode==SVG_MODE){
 		std::vector<std::string> data;
-		MolStruct::svgPolymerSave(smol,data,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
+		MolStruct::svgPolymerSave(smol,data,mol,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
 		std::string svg=data.size()?data[0]:"";
 		for(size_t ii=1,i1=data.size();ii<i1;++ii){svg+="\n";svg+=data[ii];}
 		res=svg;
