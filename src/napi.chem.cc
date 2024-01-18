@@ -24,24 +24,32 @@ static Napi::Value Reject(Napi::Env env, const char* msg){
 protected:
 virtual void OnOK() override{
 	finalize();
+	Napi::Env env = Env();
 	if(result){
-		if(((Search_Mode*)mode)->mode==SVG_MODE){deferredPromise.Resolve(Napi::String::New(Env(),res));}
-		else{					deferredPromise.Resolve(Napi::Number::New(Env(),BOOLEAN_MODE));}
-	}else{						deferredPromise.Resolve(Env().Undefined());}}
+		Napi::Object rs = Napi::Object::New(env);
+		rs.Set(Napi::String::New(env,"formula"),Napi::String::New(env,formula));
+		rs.Set(Napi::String::New(env,"mw"),Napi::Number::New(env,mw));
+		if(((Search_Mode*)mode)->mode==SVG_MODE){rs.Set(Napi::String::New(env,"svg"),Napi::String::New(env,res));}
+		deferredPromise.Resolve(rs);
+	}else{						deferredPromise.Resolve(env.Undefined());}}
 virtual void OnError(const Napi::Error& e) override{finalize();deferredPromise.Reject(e.Value());}
 void Execute() override{
 std::istringstream mis(mol);
-MolStruct::TSimpleMolecule smol;
+MolStruct::TSVGMolecule smol;
 if(smol.readMolfile(mis)&&smol.nAtoms()>0){
 	smol.defineAtomConn();
 	smol.allAboutCycles();
-	if((result=((MolStruct::TEditedMolecule*)query)->fragmentSearch(&smol,NULL))&&((Search_Mode*)mode)->mode==SVG_MODE){
-		std::vector<std::string> data;
-		MolStruct::svgPolymerSave(smol,data,mol,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
-		std::string svg=data.size()?data[0]:"";
-		for(size_t ii=1,i1=data.size();ii<i1;++ii){svg+="\n";svg+=data[ii];}
-		res=svg;
-}}}
+	if(result=((MolStruct::TEditedMolecule*)query)->fragmentSearch(&smol,NULL)){
+		formula=smol.getMolformula(true);
+		mw=smol.getMolWeight(false);
+		if(((Search_Mode*)mode)->mode==SVG_MODE){
+			std::vector<std::string> data;
+//			MolStruct::svgPolymerSave(smol,data,mol,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
+			smol.cb_svgSave(data,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
+			std::string svg=data.size()?data[0]:"";
+			for(size_t ii=1,i1=data.size();ii<i1;++ii){svg+="\n";svg+=data[ii];}
+			res=svg;
+}}}}
 private:
 AsyncSMolTest(napi_env env,const std::string& _mol,void* _query,void* _mode) :
 	Napi::AsyncWorker(env),
@@ -58,6 +66,8 @@ void* query;
 void* mode;
 std::string mol;
 std::string res;
+std::string formula;
+double mw;
 bool result;
 Napi::Promise::Deferred deferredPromise;
 };
