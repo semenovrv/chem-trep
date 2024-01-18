@@ -122,37 +122,31 @@ namespace MolStruct {
 
 
 
-	void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData,const std::string rec, bool numerationOutput, int imgWidth, int imgHeight){
-		MolStruct::TSVGMolecule test;
+	void TSVGMolecule::cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput, int imgWidth, int imgHeight){
 		std::vector<std::vector<int>*> ringList;
 		int nTotalCycles, nAromFive, nAromSixs, nCondensed;
 		int i,n;
 		double xU, yU, d;
 
-		test.moleculeCopy(sm);
-		test.removeExplicitHydrogens();
-		test.defineAtomConn();
-		test.options.fIOPT1 = 1;
-		d = test.averageBondLength();
+		cb_removeExplicitHydrogens();
+		options.fIOPT1 = 1;
+		d = averageBondLength();
 		if (d == 0) d = 30;
-		for (i = test.nAtoms() - 1; i>=0; i--) {
-			n = test.getAtom(i)->iz / 3;
+		for (i = nAtoms() - 1; i>=0; i--) {
+			n = getAtom(i)->iz / 3;
 			while (n > 0) {
-				test.unitVector(i, xU, yU);
-				xU = test.getAtom(i)->rx + xU*d;
-				yU = test.getAtom(i)->ry + yU*d;
-				test.addAtom(ID_ZVEZDA, 0, xU, yU);
-				test.addBond(1, i, test.nAtoms() - 1);
-				test.defineAtomConn();
+				unitVector(i, xU, yU);
+				xU = getAtom(i)->rx + xU*d;
+				yU = getAtom(i)->ry + yU*d;
+				addAtom(ID_ZVEZDA, 0, xU, yU);
+				addBond(1, i, nAtoms() - 1);
+				defineAtomConn();
 				n--;
 			}
 		}
-
-		test.allAboutCycles();
-		test.cyclesCalculate(nTotalCycles, nAromFive, nAromSixs, nCondensed, &ringList);
-		test.getSVG(imgWidth, imgHeight, ringList, svgData, true, numerationOutput,rec);
-
-		for (i = 0; i < ringList.size(); i++) delete(ringList[i]);
+		allAboutCycles();
+		cyclesCalculate(nTotalCycles, nAromFive, nAromSixs, nCondensed, &ringList);
+		cb_getSVG(imgWidth, imgHeight, ringList, svgData, true, numerationOutput);
 	}
 
 
@@ -1504,25 +1498,7 @@ namespace MolStruct {
 		return result;
 	};
 
-
-
-
-
-
-
-	double	TSVGMolecule::_getMW() const{
-	double result=0;
-	int j,k;
-	for (j=0; j<nAtoms(); j++) { 
-		k=getAtom(j)->nv;
-		k=k-getAtom(j)->currvalence-abs(getAtom(j)->nc)-getAtom(j)->rl;
-		if (k < 0) k=0;
-		result=result+aMass[getAtom(j)->na]+k*aMass[1];
-	};
-	return result;
-	}
-
-	std::string TSVGMolecule::getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw,const std::string rec){
+	std::string TSVGMolecule::cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw){
 		double dNorm, dd, dScale, xMin, xMax, yMin, yMax;
 		double xCorr, yCorr;
 		int i;
@@ -1538,11 +1514,6 @@ namespace MolStruct {
 		bmWInternal = bmWidth - 2 * svgMarginXPix;
 		bmHInternal = bmHeight - 2 * svgMarginYPix;
 		if ((bmWInternal < 30) || (bmHInternal < 20)) return result;
-
-
-		//defineConn;
-		//determineFormula;
-		//allAboutCycles;
 
 		dNorm = averageBondLength();
 		if (nBonds() == 0) dNorm = 0;
@@ -1608,22 +1579,10 @@ namespace MolStruct {
 		parList.clear();
 		parList.push_back(std::to_string(bmWidth));
 		parList.push_back(std::to_string(bmHeight));
-		parList.push_back(std::to_string(bmWidth));
-		parList.push_back(std::to_string(bmHeight));
-
-		s = format("<svg width=\"{}\" height=\"{}\" viewbox=\"0 0 {} {}\"  xmlns=\"http://www.w3.org/2000/svg\">", parList); //[bmWidth, bmHeight, bmWidth, bmHeight]);
+		s = format("<svg viewbox=\"0 0 {} {}\"  xmlns=\"http://www.w3.org/2000/svg\">", parList);
 		outBuffer.push_back(s);
-
-		parList.clear();
-		parList.push_back(svgDefaultAtomBackColor);
-		parList.push_back(svgDefaultAtomBackColor);
-		parList.push_back(svgDefaultAtomBackColor);
-		parList.push_back(svgDefaultAtomBackColor);
-		parList.push_back(svgDefaultAtomFontColor);
-
-		s = format("<style type=\"text/css\"><![CDATA[ circle { stroke: {}; fill: {}; stroke-width: 1.0;} rect { stroke: {}; fill: {}; stroke-width: 1.0;} text { stroke-width: 0; fill: {}} line { stroke: black;} ]]></style>", parList); //[SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomBackColor, SVGDefaultAtomFontColor]);
-		outBuffer.push_back(s);
-
+		outBuffer.push_back("<style>@import url(css/chem-trep.svg.mol.css);</style>");
+		
 		s = "";
 		if (dScale != 1) {
 			dScale = 1 / dScale;
@@ -1648,6 +1607,7 @@ namespace MolStruct {
 		s = svgSaveInternal(atomProperties, redBonds, ringList, arrowDrawIsotope, numerationDraw);
 		outBuffer.push_back(s);
 		outBuffer.push_back("</g>");
+		/*
 		outBuffer.push_back("<script data-fieldname=\"mdl-record\" type=\"text/plain\">");
 			outBuffer.push_back(rec);outBuffer.push_back("</script>");
 		outBuffer.push_back("<script data-fieldname=\"mw\" type=\"text/plain\">");
@@ -1656,6 +1616,7 @@ namespace MolStruct {
 			outBuffer.push_back(std::to_string(getMolWeight()));outBuffer.push_back("</script>");
 		outBuffer.push_back("<script data-fieldname=\"formula\" type=\"text/plain\">");
 			outBuffer.push_back(getMolformula(true));outBuffer.push_back("</script>");
+		*/
 		outBuffer.push_back("</svg>");
 		return result;
 	};

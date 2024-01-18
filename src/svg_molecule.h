@@ -57,8 +57,9 @@ public:
 	cfIOPT			options;
 
 
-	std::string getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
-	std::string getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw,const std::string rec);
+	std::string    getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
+	std::string cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
+	void 		cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput, int imgWidth, int imgHeight);
 	TSVGMolecule() : TSimpleMolecule() {
 		svgDefaultAtomBackColor = "white";// RGB(255, 255, 255)";
 		svgDefaultAtomFontColor = "black";// RGB(0, 0, 0)";
@@ -78,7 +79,6 @@ public:
 	};
 };
 void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData, bool numerationOutput, int imgWidth= SVG_IMAGE_WIDTH, int imgHeight= SVG_IMAGE_HEIGHT);
-void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData, const std::string rec, bool numerationOutput, int imgWidth= SVG_IMAGE_WIDTH, int imgHeight= SVG_IMAGE_HEIGHT);
 
 } // namespace MolStruct
 #endif
