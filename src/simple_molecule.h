@@ -202,10 +202,11 @@ public:
 
 	std::string				getAtomSymbol(int atAtom);
 	double					getAtomMass(int atAtom);
-	double					getMolWeight();
+	double					getMolWeight(bool calc=true);
 	std::string				getMolformula(bool isHTML=false) const;
 	int						getNumberOfAtoms(int na);
-	void					removeExplicitHydrogens(void);
+	void					   removeExplicitHydrogens(void);
+	void					cb_removeExplicitHydrogens(void);
 	void					rescaleToLength(double newAvgBondLength);
     void					init();
 	TSimpleMolecule&		operator=(const TSimpleMolecule& sm);

@@ -4357,6 +4357,56 @@ void TSimpleMolecule::removeExplicitHydrogens(void)
 	};
 }
 
+
+
+
+
+void TSimpleMolecule::cb_removeExplicitHydrogens(void)
+{
+	int				i, n;
+	bool				test;
+	vector<TSingleAtom *> tempAtom;
+	vector<TSingleBond *> tempBond;
+	TSingleBond * sb;
+
+	test = false; for(i = 0; i < fAtom.size(); ++i)if(fAtom[i]->na == 1) {test = true;break;}; if(!test) return;
+	try {
+	  while (test && (fAtom.size() > 1)) {
+        test=false;
+		tempAtom.clear();
+		tempBond.clear();
+		n=-1;
+		for (i=fAtom.size()-1; i>=0; i--) if (getAtom(i)->na == 1) {
+		  n=i;
+          break;
+		};
+		if (n >= 0) {
+          test=true;
+		  for (i=0; i<nAtoms(); i++) if (i != n) tempAtom.push_back(fAtom[i]);
+		  delete(fAtom[n]);
+		  fAtom.resize(tempAtom.size());
+		  for (i=0; i<tempAtom.size(); i++) fAtom[i]=tempAtom[i];
+		  for (i=0; i< nBonds(); i++) {
+			sb=getBond(i);
+			if ((sb->at[0] == n) || (sb->at[1] == n)) delete sb; else {
+			  if (sb->at[0] > n) sb->at[0]--;
+			  if (sb->at[1] > n) sb->at[1]--;
+			  tempBond.push_back(sb);
+			};
+		  };
+		  fBond.resize(tempBond.size());
+		  for (i=0; i<tempBond.size(); i++) fBond[i]=tempBond[i];
+		};
+	  };
+	  defineAtomConn();
+	} catch(...) {};
+}
+
+
+
+
+
+
 void TSimpleMolecule::rescaleToLength(double newAvgBondLength){
   double oldBondLength=this->averageBondLength();
   double xMin, yMin;
@@ -6009,11 +6059,11 @@ void TSimpleMolecule::calculateAllIndeces(){
 };
 
 
-double	TSimpleMolecule::getMolWeight() {
+double	TSimpleMolecule::getMolWeight(bool calc){
   double result=0;
   int j,k;
 
-  defineAtomConn();
+  if(calc){defineAtomConn();};
   for (j=0; j<nAtoms(); j++) { 
   	k=getAtom(j)->nv;
 	k=k-getAtom(j)->currvalence-abs(getAtom(j)->nc)-getAtom(j)->rl;
@@ -6170,11 +6220,10 @@ std::string	TSimpleMolecule::getMolformula(bool isHTML) const {
   for (i=0; i<NELEMMCDL; i++) if (atomCount[i] > 0) {
 	atomCode[i]=aSymb[i+1];
 	if (atomCount[i] > 1) {
-	  if (isHTML) atomCode[i]=atomCode[i]+"<sub>";
-	  atomCode[i]=atomCode[i]+intToStr(atomCount[i]);
-	  if (isHTML) atomCode[i]=atomCode[i]+"</sub>";
-	};
-  };
+	  //if (isHTML) atomCode[i]=atomCode[i]+"<sub>";
+	  if(isHTML){ 	atomCode[i]=atomCode[i]+"<sub>"+intToStr(atomCount[i])+"</sub>";}
+	  else{			atomCode[i]=atomCode[i]+intToStr(atomCount[i]);};
+  }};
   if (atomCount[5] > 0) {   //Carbon
 	result=result+atomCode[5];
 	atomCode[5]="";
