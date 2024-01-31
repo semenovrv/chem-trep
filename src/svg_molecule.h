@@ -9,11 +9,29 @@
 namespace MolStruct {
 
 #define SVG_IMAGE_WIDTH 400
-#define SVG_IMAGE_HEIGHT 300
+#define SVG_IMAGE_MIN_WIDTH 40
+#define SVG_IMAGE_HEIGHT 200
+#define SVG_IMAGE_MIN_HEIGHT 40
+#define SVG_MOL_CLASS "chem-trep-mol"
+#define SVG_CANVAS_CLASS "chem-trep-mol-canvas"
+#define SVG_ATOM_CLASS "chem-trep-mol-atom"
+#define SVG_BOND_CLASS "chem-trep-mol-bond"
+#define SVG_MOL_ID "atoms"
+#define SVG_INLINE_CSS "\n"\
+" circle.chem-trep-mol-canvas\n"\
+",rect.chem-trep-mol-canvas	{stroke:white;fill:white;width:100%;height:100%;}\n"\
+" rect.chem-trep-mol-atom	{fill:black;}\n"\
+" text.chem-trep-mol-atom	{fill:black;	stroke-width:0;}\n"\
+" path.chem-trep-mol-bond	{stroke:black;}\n"\
+" circle.chem-trep-mol\n"\
+",polygon.chem-trep-mol\n"\
+",g.chem-trep-mol			{stroke:black;stroke-width:1;fill:black;}\n"\
+"\ g.chem-trep-mol			{font-family:'Arial';}\n"
 
 struct singleCenter {
-	double centerX, centerY;
-    int cSize;
+	double centerX = 0;
+	double centerY = 0;
+    int cSize =0;
 };
 
 
@@ -23,9 +41,13 @@ protected:
 	void dashedLineSVG(double x1, double y1, double x2, double y2, std::vector<std::string> & outBuffer) const;
 	std::string  solidLineSVG(double x1, double y1, double x2, double y2) const;
 	void svgTextOut(double x, double y, double fontSize, int nH, int charge, int iz, int rl, const std::string sData, std::vector<std::string> & outBuffer) const;
+	void svgTextOut(double x, double y, double fontSize, int nH, int charge, int iz, int rl, const std::string sData, std::vector<std::string> & boxStrings, std::vector<std::string> & letterStrings) const;
 	std::string bDrawerSVG(std::vector<std::string> & polygonData, int bondN, double ml, const std::vector<singleCenter> & center) const;
 	void aDrawerSVG(std::vector<std::string> & dataOut, int atomN, int fontSize, const std::vector<std::string> & atomProperties, bool  arrowDrawIsotope, const std::string aNum) const;
-	std::string svgSaveInternal(const std::vector<std::string> & atomProperties, const std::vector<int> & redBonds, const std::vector<std::vector<int>*> & ringList, bool  arrowDrawIsotope, bool numerationDraw);
+	void aDrawerSVG(std::vector<std::string> & boxOut, std::vector<std::string> & lettersOut, int atomN, int fontSize, const std::vector<std::string> & atomProperties, bool  arrowDrawIsotope, const std::string aNum) const;
+	std::string svgSaveInternal(const std::vector<std::string> & atomProperties, const std::vector<std::vector<int>*> & ringList, bool  arrowDrawIsotope, bool numerationDraw);
+	void cb_svgSaveInternal(const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid);
+
 	int getTextWidthLarge(const std::string & data) const;
 	int getTextWidthSmall(const std::string & data) const;
 	double cosB(int b1, int b2) const;
@@ -57,9 +79,13 @@ public:
 	cfIOPT			options;
 
 
+	void scaleAtoms(double sX,double sY);
+	void shiftAtoms(double dx,double dy);
+	double averageDistance();
+
 	std::string    getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
-	std::string cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
-	void 		cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput, int imgWidth, int imgHeight);
+	void 		cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css);
+	void		cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css = SVG_INLINE_CSS);
 	TSVGMolecule() : TSimpleMolecule() {
 		svgDefaultAtomBackColor = "white";// RGB(255, 255, 255)";
 		svgDefaultAtomFontColor = "black";// RGB(0, 0, 0)";

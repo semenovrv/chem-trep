@@ -45,7 +45,8 @@ if(smol.readMolfile(mis)&&smol.nAtoms()>0){
 		if(((Search_Mode*)mode)->mode==SVG_MODE){
 			std::vector<std::string> data;
 //			MolStruct::svgPolymerSave(smol,data,mol,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
-			smol.cb_svgSave(data,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
+			//printf("cb_svgSave %s\n",((Search_Mode*)mode)->css.c_str());
+			smol.cb_svgSave(data,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height,"atoms",((Search_Mode*)mode)->css);
 			std::string svg=data.size()?data[0]:"";
 			for(size_t ii=1,i1=data.size();ii<i1;++ii){svg+="\n";svg+=data[ii];}
 			res=svg;
@@ -92,9 +93,11 @@ QueryMol::QueryMol(const Napi::CallbackInfo& info) : ObjectWrap(info){Napi::Env 
 			if(!info[3].IsNumber()){	Napi::TypeError::New(env, "QueryMol: svg height is not an integer").ThrowAsJavaScriptException();return;}
 			else{_mode.height=info[3].As<Napi::Number>();};
 			if(info.Length()>4){
-				if(!info[4].IsBoolean()){Napi::TypeError::New(env, "QueryMol: svg draw mode is not a boolean").ThrowAsJavaScriptException();return;}
-				else{_mode.numerationDraw=info[4].As<Napi::Boolean>();};
-	}};_mode.mode=md;};
+				if(info[4].IsBoolean()){						_mode.numerationDraw=info[4].As<Napi::Boolean>();
+					if(info.Length()>5 && info[5].IsString()){	_mode.css=info[5].As<Napi::String>().Utf8Value();};
+				}else if(info[4].IsString()){					_mode.css=info[4].As<Napi::String>().Utf8Value();
+					if(info.Length()>5 && info[5].IsBoolean()){	_mode.numerationDraw=info[5].As<Napi::Boolean>();};
+	}}};_mode.mode=md;};
 	smol.defineAtomConn();
 	smol.allAboutCycles();
 	_edmol.prepareQuery(smol);
@@ -137,6 +140,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "QueryMol"),	QueryMol::GetClass(env));
 	exports.Set(Napi::String::New(env, "SVG_MODE"),		Napi::Number::New(env,SVG_MODE));
 	exports.Set(Napi::String::New(env, "BOOLEAN_MODE"),	Napi::Number::New(env,BOOLEAN_MODE));
+	exports.Set(Napi::String::New(env, "SVG_CSS"),		Napi::String::New(env,SVG_CSS));
+
     return exports;
 }
 

@@ -2,15 +2,18 @@
 
 #include <napi.h>
 #include "edited_molecule.h"
+#include "svg_molecule.h"
 
 #define SVG_MODE 2
 #define BOOLEAN_MODE 1
+#define SVG_CSS "@import url(css/chem-trep.svg.mol.css);"
 
 typedef struct{
     int mode=BOOLEAN_MODE;
-	int width=300;
-    int height=150;
+	int width=SVG_IMAGE_WIDTH;
+    int height=SVG_IMAGE_HEIGHT;
     bool numerationDraw=false;
+    std::string css = SVG_INLINE_CSS;
 } Search_Mode;
 
 class QueryMol : public Napi::ObjectWrap<QueryMol>

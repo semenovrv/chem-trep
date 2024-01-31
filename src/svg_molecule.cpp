@@ -83,8 +83,7 @@ namespace MolStruct {
 			y4 = yp;
 		};
 		ss = formatPrecision(x2,1) + "," + formatPrecision(y2,1) + "  " + formatPrecision(x3,1) + "," + formatPrecision(y3,1) + "  " + formatPrecision(x4,1) + "," + formatPrecision(y4,1);
-		ss = format("<polygon fill=\"black\" stroke=\"black\" stroke-width=\"1\" points=\"{}\" />", ss);
-		polygonList.push_back(ss);
+		polygonList.push_back(format("<polygon class=\""SVG_MOL_CLASS"\" points=\"{}\" />", ss));
 	};
 
 	void svgPolymerSave(const TSimpleMolecule & sm, std::vector<std::string> & svgData, bool numerationOutput, int imgWidth, int imgHeight) {
@@ -122,7 +121,7 @@ namespace MolStruct {
 
 
 
-	void TSVGMolecule::cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput, int imgWidth, int imgHeight){
+	void TSVGMolecule::cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css){
 		std::vector<std::vector<int>*> ringList;
 		int nTotalCycles, nAromFive, nAromSixs, nCondensed;
 		int i,n;
@@ -146,7 +145,7 @@ namespace MolStruct {
 		}
 		allAboutCycles();
 		cyclesCalculate(nTotalCycles, nAromFive, nAromSixs, nCondensed, &ringList);
-		cb_getSVG(imgWidth, imgHeight, ringList, svgData, true, numerationOutput);
+		cb_getSVG(bmWidth,bmHeight,ringList,svgData,true,numerationOutput,uid,css);
 	}
 
 
@@ -177,7 +176,7 @@ namespace MolStruct {
 			params.push_back(sX);
 			params.push_back(sY);
 			params.push_back(sR);
-			s = format("<circle fill=\"black\" stroke=\"black\" stroke-width=\"1\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);
+			s = format("<circle class=\""SVG_MOL_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);
 			outBuffer.push_back(s);
 			r1 = r1 + siX*cs;
 			r2 = r2 + siY*si;
@@ -243,28 +242,24 @@ namespace MolStruct {
 					if (s.length() > 0) s = s + " ";
 					s = s + std::to_string(polyX[i]) + "," + std::to_string(polyY[i]);
 				};
-				s = format("<polygon fill=\"black\" stroke=\"black\" stroke-width=\"1\" points=\"{}\" />", s);
-				outBuffer.push_back(s);
 				
-				sX = formatPrecision(r1,1); 
-				sY = formatPrecision(r2,1); 
 				sR = formatPrecision(dx,1); 
+				
 				params.clear();
-				params.push_back(sX);
-				params.push_back(sY);
-				params.push_back(sR);
-				s = format("<circle fill=\"black\" stroke=\"black\" stroke-width=\"1\" cx=\"{}\" cy=\"{}\" r=\"{}\" />",params);
-				outBuffer.push_back(s);
-				//Canvas.Ellipse(round(R1-Dx),round(R2-Dx),round(R1+Dx),round(R2+Dx));
-				sX = formatPrecision(r1 + 3 * siX*cs,1); 
-				sY = formatPrecision(r2 + 3 * siY*si,1); 
+				params.push_back(s);
+				outBuffer.push_back(format("<polygon class=\""SVG_MOL_CLASS"\" points=\"{}\" />",params));
+				
 				params.clear();
-				params.push_back(sX);
-				params.push_back(sY);
+				params.push_back(formatPrecision(r1,1));
+				params.push_back(formatPrecision(r2,1));
 				params.push_back(sR);
-
-				s = format("<circle fill=\"black\" stroke=\"black\" stroke-width=\"1\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);
-				outBuffer.push_back(s);
+				outBuffer.push_back(format("<circle class=\""SVG_MOL_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />",params));
+				
+				params.clear();
+				params.push_back(formatPrecision(r1 + 3 * siX*cs,1));
+				params.push_back(formatPrecision(r2 + 3 * siY*si,1));
+				params.push_back(sR);
+				outBuffer.push_back(format("<circle class=\""SVG_MOL_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params));
 			};
 
 			r1 = r1 + siX*cs;
@@ -649,6 +644,325 @@ namespace MolStruct {
 		
 	};
 
+
+
+
+
+
+
+
+	void TSVGMolecule::svgTextOut(double x, double y, double fontSize, int nH, int charge, int iz, int rl, const std::string sData, std::vector<std::string> & boxStrings, std::vector<std::string> & letterStrings) const {
+		std::string	s, ss;
+		double textWidth, textHeight;
+		double xDLeft, xDRight, yD;
+		double boxY, textY;
+		std::string s1, s11, s2, s3, s4, anchor;
+		std::string sMain;
+		int smallHeight;
+
+		bool leftDefinition;
+		std::vector<std::string> params;
+		int i,n;
+		std::string textStringSpan;
+		double boxWidth;
+		int nr;
+		int hSuperscriptShift, dataHeight, dataWidth;
+		double boxRad, r;
+
+		leftDefinition= nH>0;
+		nH = abs(nH);
+		if (nH>100) nH = 0;
+		hSuperscriptShift = fontSize -round(fontSize*svgFontSmallRatio);  //font size == fontHeight
+		smallHeight = round(fontSize*svgFontSmallRatio);
+
+		dataWidth = getTextWidthLarge(sData);
+		boxWidth = dataWidth + 2;
+		dataHeight = fontSize;
+		yD = y;
+		xDLeft = x - dataWidth / 2 - 1;        //XD
+		xDRight = xDLeft + boxWidth;       //XD
+
+		boxY = yD - fontSize / 2;
+		textY = yD + 0.38*fontSize;
+		
+
+		s1 = formatPrecision(xDLeft,1);
+		if (svgDefaultAtomBox == 0) {
+			s11 = formatPrecision(boxY,1); //str(boxY:1 : 1, s11);
+			s3 = formatPrecision(boxWidth + 1,1); 
+			s4 = formatPrecision(dataHeight,1); 
+			params.clear();
+			params.push_back(s1);
+			params.push_back(s11);
+			params.push_back(s3);
+			params.push_back(s4);
+			ss = format("<rect class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />", params);  //[x-textWidth div 2,2+y+textHeight div 2,4+textWidth,textHeight]);
+		}
+		else {
+			r = (boxWidth + 1) / 2;
+			if ((dataHeight / 2) > r) r = dataHeight / 2;
+			if (sData.length() == 1) s4 = formatPrecision(xDLeft + r - 1,1); else s4 = formatPrecision(xDLeft + r,1);
+			s11 = formatPrecision(boxY + dataHeight / 2,1); 
+			s3 = formatPrecision(r + svgDeltaR,1);  
+			params.clear();
+			params.push_back(s4);
+			params.push_back(s11);
+			params.push_back(s3);
+
+			ss = format("<circle class=\""SVG_ATOM_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />",params);  //[x-textWidth div 2,2+y+textHeight div 2,4+textWidth,textHeight]);
+		};
+		boxStrings.push_back(ss);
+		//Canvas.FillRect(R);
+		s2 = formatPrecision(textY,1);
+		params.clear();
+		params.push_back(s1);
+		params.push_back(s2);
+		params.push_back(sData);
+
+		ss = format("<text class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\">{}</text>", params);  //[X-textWidth div 2,Y+(3*textHeight)div 2,s]);
+		letterStrings.push_back(ss);
+
+		//radical addition-at up
+		if (rl != 0) {    //Ne poluchilos radical
+			boxRad = yD;
+			s1 = formatPrecision(xDLeft,1); //str(xDLeft:1 : 1, s1);
+			s11 = formatPrecision(boxRad,1);  //str(boxRad:1 : 1, s11);
+			s3 = formatPrecision(boxWidth + 1,1); //str((boxWidth + 1) : 1 : 1, s3);
+			s4 = "14";
+		};
+
+		if (iz != 0) { //from left
+			s = intToStr(iz);
+			n = getTextWidthSmall(s);
+			dataHeight = round(fSVGFontHeight*svgFontSmallRatio);//getTextHeightSmall(s);
+			boxWidth = n + 2;
+			xDLeft = xDLeft - boxWidth - 1;     //XD
+
+			s1=formatPrecision(xDLeft,1);
+			if (svgDefaultAtomBox == 0) {
+
+				s11=formatPrecision(boxY,1);
+				s3 = formatPrecision(boxWidth + 1, 1);
+				s4=std::to_string(dataHeight);
+				params.clear();
+				params.push_back(s1);
+				params.push_back(s11);
+				params.push_back(s3);
+				params.push_back(s4);
+
+				ss = format("<rect class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />", params);  //[x-textWidth div 2,2+y+textHeight div 2,4+textWidth,textHeight]);
+			}
+			else {
+				r = (boxWidth + 1) / 2;
+				if ((dataHeight / 2) > r) r = dataHeight / 2;
+				s4=formatPrecision(xDLeft + r,1);
+				s11=formatPrecision(boxY + r,1);
+				s3=formatPrecision(r + svgDeltaR,2);
+				params.clear();
+				params.push_back(s4);
+				params.push_back(s11);
+				params.push_back(s3);
+
+				ss = format("<circle class=\""SVG_ATOM_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />",params);  //[x-textWidth div 2,2+y+textHeight div 2,4+textWidth,textHeight]);
+			};
+
+
+
+			boxStrings.push_back(ss);
+			s2=formatPrecision(textY - hSuperscriptShift,1);
+			params.clear();
+			params.push_back(s1);
+			params.push_back(s2);
+			params.push_back(intToStr(smallHeight));
+			params.push_back(s);
+
+			ss = format("<text class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>", params);  //[X-textWidth div 2,Y+(3*textHeight)div 2,s]);
+			letterStrings.push_back(ss);
+		};
+		
+
+		if (charge != 0) { //from left
+			if (abs(charge) > 1) s = intToStr(abs(charge)); else s = "";
+			if (charge < 0) s = s + '-'; else s = s + '+';
+
+			n = getTextWidthSmall(s);
+			dataHeight = round(fSVGFontHeight*svgFontSmallRatio);//getTextHeightSmall(s);
+			boxWidth = n + 2;
+			s1=formatPrecision(xDRight,1);
+			if (svgDefaultAtomBox == 0) {
+				s11=formatPrecision(boxY,1);
+				s3=formatPrecision(boxWidth + 1,1);
+				s4=intToStr(dataHeight);
+				params.clear();
+				params.push_back(s1);
+				params.push_back(s11);
+				params.push_back(s3);
+				params.push_back(s4);
+
+				ss = format("<rect class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />", params);
+			}
+			else {
+				r = (boxWidth + 1) / 2;
+				if ((dataHeight / 2) > r) r = dataHeight / 2;
+				s4=formatPrecision(xDRight + r,1);
+				s11=formatPrecision(boxY + r,1);
+				s3=formatPrecision(r + svgDeltaR,1);
+				params.clear();
+				params.push_back(s4);
+				params.push_back(s11);
+				params.push_back(s3);
+
+				ss = format("<circle class=\""SVG_ATOM_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);  //[x-textWidth div 2,2+y+textHeight div 2,4+textWidth,textHeight]);
+			};
+
+			boxStrings.push_back(ss);
+			s2=formatPrecision(textY - hSuperscriptShift,1);
+			params.clear();
+			params.push_back(s1);
+			params.push_back(s2);
+			params.push_back(intToStr(smallHeight));
+			params.push_back(s);
+
+			ss = format("<text class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>", params);
+			letterStrings.push_back(ss);
+			xDRight = xDRight + boxWidth + 1;     //XD
+		};
+		
+		if (nH != 0) {
+			textStringSpan = "";
+			boxWidth = 0;
+			if (leftDefinition) {
+				if (nH > 1) {
+					s = intToStr(nH);
+					params.clear();
+					params.push_back(intToStr(smallHeight));
+					params.push_back(s);
+
+					textStringSpan = format("<tspan class=\""SVG_ATOM_CLASS"\" font-size=\"{}\">{}</tspan>", params) + textStringSpan;
+					n = getTextWidthSmall(s);
+					boxWidth = boxWidth + n + 1;
+				};
+				s = "H";
+
+				params.clear();
+				params.push_back(intToStr(round(fontSize)));
+				params.push_back(s);
+				textStringSpan = format("<tspan class=\""SVG_ATOM_CLASS"\" font-size=\"{}\">{}</tspan>",params) + textStringSpan;
+				n = getTextWidthLarge(s);
+				boxWidth = boxWidth + n + 2;
+				dataHeight = round(fontSize);
+
+
+				s1=formatPrecision(xDLeft - boxWidth,1);
+				if (svgDefaultAtomBox == 0) {
+					s11 = formatPrecision(boxY, 1);
+					s3=formatPrecision(boxWidth + 1,1);
+					s4=intToStr(dataHeight);
+					params.clear();
+					params.push_back(s1);
+					params.push_back(s11);
+					params.push_back(s3);
+					params.push_back(s4);
+
+					ss = format("<rect class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",params);
+				}
+				else {
+					r = (boxWidth + 1) / 2;
+					if ((dataHeight / 2) > r)  r = dataHeight / 2;
+
+					s4=formatPrecision(xDLeft - boxWidth + r,1);
+					s11=formatPrecision(boxY + dataHeight / 2,1);
+					s3=formatPrecision(r + svgDeltaR,2);
+					params.clear();
+					params.push_back(s4);
+					params.push_back(s11);
+					params.push_back(s3);
+
+					ss = format("<circle class=\""SVG_ATOM_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);
+
+				};
+
+				boxStrings.push_back(ss);
+				s2 = formatPrecision(textY, 1);
+				params.clear();
+				params.push_back(s1);
+				params.push_back(s2);
+				params.push_back(intToStr(smallHeight));
+				params.push_back(textStringSpan);
+
+				ss = format(" <text class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>",params);
+				letterStrings.push_back(ss);
+				xDLeft = xDLeft - boxWidth - 1;     //XD
+			}
+			else {
+				if (nH > 1) {
+					s = intToStr(nH);
+					params.clear();
+					params.push_back(intToStr(smallHeight));
+					params.push_back(s);
+
+					textStringSpan = format("<tspan class=\""SVG_ATOM_CLASS"\" font-size=\"{}\">{}</tspan>",params) + textStringSpan;
+					n = getTextWidthSmall(s);
+					boxWidth = boxWidth + n + 1;
+				};
+				s = "H";
+				params.clear();
+				params.push_back(intToStr(fontSize));
+				params.push_back(s);
+
+				textStringSpan = format("<tspan class=\""SVG_ATOM_CLASS"\" font-size=\"{}\">{}</tspan>", params) + textStringSpan;
+				n = getTextWidthLarge(s);
+				boxWidth = boxWidth + n + 2;
+				dataHeight = fontSize;
+
+
+				s1=formatPrecision(xDRight,1);
+				if (svgDefaultAtomBox == 0) {
+					s11 = formatPrecision(boxY, 1);
+					s3 = formatPrecision(boxWidth + 2, 1);
+					s4 = formatPrecision(dataHeight,1);
+					params.clear();
+					params.push_back(s1);
+					params.push_back(s11);
+					params.push_back(s3);
+					params.push_back(s4);
+
+					ss = format("<rect class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />", params);
+				}
+				else {
+					r = (boxWidth + 1) / 2;
+					if ((dataHeight / 2) > r)  r = dataHeight / 2;
+					s4 = formatPrecision(xDRight + r, 1);
+					s11 = formatPrecision(boxY + r, 1);
+					s3=formatPrecision(r + svgDeltaR,1);
+					params.clear();
+					params.push_back(s4);
+					params.push_back(s11);
+					params.push_back(s3);
+
+					ss = format("<circle class=\""SVG_ATOM_CLASS"\" cx=\"{}\" cy=\"{}\" r=\"{}\" />", params);
+
+				};
+				boxStrings.push_back(ss);
+				s2=formatPrecision(textY,1);
+				params.clear();
+				params.push_back(s1);
+				params.push_back(s2);
+				params.push_back(intToStr(smallHeight));
+				params.push_back(textStringSpan);
+
+				ss = format("<text class=\""SVG_ATOM_CLASS"\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>", params);
+				letterStrings.push_back(ss);
+				xDRight = xDRight + boxWidth + 1;     //XD
+			};
+		};
+	};
+
+
+
+
+
+
 	double TSVGMolecule::cosB(int b1, int b2) const {
 		double r1, r2, x1, x2, y1, y2;
 		double result = 0;
@@ -1017,10 +1331,7 @@ namespace MolStruct {
 				polyDX[1] = x2; polyDY[1] = y2;
 				polyDX[3] = x3; polyDY[2] = y3;
 				ss = intToStr(polyDX[0]) + "," + intToStr(polyDY[0]) + "  " + intToStr(polyDX[1]) + "," + intToStr(polyDY[1]) + "  " + intToStr(polyDX[2]) + "," + intToStr(polyDY[2]);
-				ss = format("<polygon fill=\"black\" stroke=\"black\" stroke-width=\"1\" points=\"{}\" />", ss);
-
-				polygonData.push_back(ss);
-			
+				polygonData.push_back(format("<polygon class=\""SVG_MOL_CLASS"\" points=\"{}\" />", ss));
 			break;
 			case 10 :
 				
@@ -1192,6 +1503,122 @@ namespace MolStruct {
 
 
 	};
+	
+	
+	
+	void TSVGMolecule::aDrawerSVG(std::vector<std::string> & boxOut, std::vector<std::string> & lettersOut, int atomN, int fontSize, const std::vector<std::string> & atomProperties, bool  arrowDrawIsotope, const std::string aNum) const {
+		const std::string valDes[11] = { "(0)", "(I)", "(II)", "(III)", "(IV)", "(V)", "(VI)", "(VII)", "(VIII)",	"(IX)", "(X)" };
+
+		int	c2, k, j;
+		std::string s;
+		int i;
+		bool test1, test;
+		double cSF, xu, yu, xu1, yu1, r1, r2, r3;
+		int nH;
+		int c1;
+		double right, left, yout;
+		TSingleAtom  aT;
+		std::string asym, asymLeft;
+		double rr;
+		int iz;
+
+		int nnh;
+		
+
+
+		r2 = -1;
+		if (getAtom(atomN)->na == 0) return;
+		asym = "";
+		if (getAtom(atomN)->na < NELEMMCDL) asym = aSymb[getAtom(atomN)->na];
+		if (asym.length() == 0) return;
+		aT = *getAtom(atomN);
+		test1 = (aT.na == 6) && (aT.nb == 2);
+		if (test1) { //checking if linear fragment is used for the atom 
+			c1 = aT.ac[0];
+		  //it is necessary to draw carbon in linear fragment)
+			xu = getAtom(c1)->rx - aT.rx;
+			yu = getAtom(c1)->ry - aT.ry;
+			c1 = aT.ac[1];
+			xu1 = getAtom(c1)->rx - aT.rx;
+			yu1 = getAtom(c1)->ry - aT.ry;
+			cSF = sqrt(xu*xu + yu*yu)*sqrt(xu1*xu1 + yu1*yu1);
+			if (cSF > 0.00001) {
+				cSF = 1 + (xu*xu1 + yu*yu1) / cSF;
+				if (cSF < 0.1) test1 = true; else test1 = false;
+			}
+			else test1 = false;
+		};
+		if (! test1) test1 = aT.astereo != 0;
+		test = (aT.na == 6) && (aT.nv == 4) && (aT.nc == 0) && (aT.iz == 0)  &&(aNum.length()==0) && ((aT.astereo == 0) || (options.fIOPT3 == 3)) && (aT.nb != 0) && (! options.fIOPT4) && (aT.special == 0);
+		test = test && (! test1);
+		
+		//carbon without attribute will not be drawn
+
+		if (!((!test) || ((aT.nb <= 1) && (options.fIOPT1 == 2)))) {
+			if (atomProperties.size() > atomN)	if (atomProperties[atomN].length() > 0) {
+				k = round(fontSize*svgFontSmallRatio);
+				yout = round(aT.ry) - k;
+				left = round(aT.rx) - getTextWidthLarge(atomProperties[atomN]) / 2; 
+				//   !!!!!!!!!     sVGTextOut(round(left),round(yOut),atomProperties[atomN],);
+			};
+			return;
+		};
+		nnh = 0;
+		
+		if (((aT.nb <= 1) && (options.fIOPT1 == 2)) || ((aT.na != 6) && ((options.fIOPT1 == 2) || (options.fIOPT1 == 3)))) {
+
+			//implicitly defined hydrogens atoms are drawn.iOPT[1] values:
+			//= 1 - no hydrigen draw. = 2 - for atoms, which have one or less neighbour, =3 - for hetero - atoms
+
+			unitVector(atomN, xu, yu);
+			nH = aT.nv;
+			nH = nH - aT.currvalence - abs(aT.nc) - aT.rl;
+		
+			if (nH > 0) {
+				if (nH > 1) s = intToStr(nH);
+				if ((abs(xu) < 0.1) || (aT.nb == 1)) { // definition must be more sertain 
+					xu = 0;
+					if (aT.nb > 0) for (i = 0; i < aT.nb; i++) xu = xu - (getAtom(aT.ac[i])->rx - aT.rx);
+					if (abs(xu) < 0.1) {
+						r1 = 100000;
+						for (i = 0; i < nBonds(); i++) {
+							r3 = xDist(atomN, i);
+							if (abs(r3) < r1) { r1 = abs(r3); r2 = r3; };
+						};
+						if (r2 < 0) xu = 1; else xu = -1;
+					}
+				};
+
+				if (xu <= 0) { //left definition 
+					nnh = nH;
+				}
+				else {
+					nnh = -nH;
+				};
+			};
+		};
+
+		//if (fAtom[atomN].NA=6) and (fAtom[atomN].NB=1) then Asym:='CH3';
+		unitVector(atomN, xu, yu);
+		if ((abs(xu) < 0.1) || (aT.nb == 1)) { //Definition must be more sertain 
+			xu = 0;
+			if (aT.nb > 0) for (i=0; i<aT.nb; i++) xu = xu - (getAtom(aT.ac[i])->rx - aT.rx);
+		};
+		if (nnh == 0) {
+			if (xu <= 0) nnh = 1000; else nnh = -1000;
+		};
+		iz = 0;
+		if (aT.iz != 0) iz  = round(aMass[aT.na] + aT.iz);
+		if (arrowDrawIsotope) iz = 0;
+		s = asym;
+		if (aNum.length() > 0) s = s + "(" + aNum + ")";
+		svgTextOut(aT.rx, aT.ry, fontSize, nnh, aT.nc, iz, aT.rl, s, boxOut, lettersOut);
+
+
+	};
+	
+	
+	
 
 	double TSVGMolecule::xDist(int aN, int bN) const {
 		//the function finds distance between fAtom aN and bond bN(including sign).
@@ -1265,7 +1692,7 @@ namespace MolStruct {
 	}
 
 
-	std::string TSVGMolecule::svgSaveInternal(const std::vector<std::string> & atomProperties, const std::vector<int> & redBonds, const std::vector<std::vector<int>*> & ringList, 
+	std::string TSVGMolecule::svgSaveInternal(const std::vector<std::string> & atomProperties, const std::vector<std::vector<int>*> & ringList, 
 		bool  arrowDrawIsotope, bool numerationDraw) {
 
 		int w;
@@ -1346,88 +1773,70 @@ namespace MolStruct {
 		return result;
 	};
 
+	double TSVGMolecule::averageDistance(){return (nBonds() == 0)?(averageAtomDistance()/2):averageBondLength();};
+
+	void TSVGMolecule::scaleAtoms(double sX,double sY){for (int i=0,nA=nAtoms();i<nA;i++){
+			getAtom(i)->rx = getAtom(i)->rx * sX;
+			getAtom(i)->ry = getAtom(i)->ry * sY;};};
+
+	void TSVGMolecule::shiftAtoms(double dx,double dy){for (int i=0,nA=nAtoms();i<nA;i++){
+			getAtom(i)->rx = getAtom(i)->rx + dx;
+			getAtom(i)->ry = getAtom(i)->ry + dy;};};
+
 	std::string TSVGMolecule::getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw) {
-		double dNorm, dd, dScale, xMin, xMax, yMin, yMax;
+		double dNorm, dd, dScale, xMin, xMax, yMin, yMax, dX, dY, sX, sY;
 		double xCorr, yCorr;
 		int i;
 		int bmWInternal, bmHInternal;
 		std::string s;
 		std::string s1, s2;
 		std::vector<std::string> parList, atomProperties;
-		std::vector<int> redBonds;
 
 		std::string result = "";
 
-		if (nAtoms() == 0) return result;
+		if (nAtoms() == 0)								return result;
 		bmWInternal = bmWidth - 2 * svgMarginXPix;
 		bmHInternal = bmHeight - 2 * svgMarginYPix;
-		if ((bmWInternal < 30) || (bmHInternal < 20)) return result;
+		if ((bmWInternal < 30) || (bmHInternal < 20))	return result;
 
 
 		//defineConn;
 		//determineFormula;
 		//allAboutCycles;
-
-		dNorm = averageBondLength();
-		if (nBonds() == 0) dNorm = 0;
-		if (dNorm <= 0) dNorm = averageAtomDistance() / 2;
-		if (dNorm > 0)  for (i = 0; i < nAtoms(); i++) {  //Pixels coordinates
-			getAtom(i)->rx = getAtom(i)->rx * fRecommendedBondLengthPix / dNorm;
-			getAtom(i)->ry = getAtom(i)->ry * fRecommendedBondLengthPix / dNorm;
-		};
-		xMin = getAtom(0)->rx;
-		xMax = getAtom(0)->rx;
-		yMin = getAtom(0)->ry;
-		yMax = getAtom(0)->ry;
-		for (i = 0; i < nAtoms(); i++) {
-			dd = getAtom(i)->rx;
-			if (dd < xMin) xMin = dd;
-			if (dd > xMax) xMax = dd;
-			dd = getAtom(i)->ry;
-			if (dd < yMin) yMin = dd;
-			if (dd > yMax) yMax = dd;
-		};
-		//scale and shift
-		if (dNorm == 0) {
-			//single atom
+		if ((nBonds() == 0)&&(nAtoms()==1)) {
 			getAtom(0)->rx = svgMarginXPix + bmWInternal / 2;
 			getAtom(0)->ry = svgMarginYPix + bmHInternal / 2;
 			dScale = 1;
-		}
-		else {
-			//shift atoms
-			xCorr = svgMarginXPix;
-			yCorr = svgMarginYPix;
-			if (((xMax - xMin) <= bmWInternal) && ((yMax - yMin) <= bmHInternal)) {
-				//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
-				xCorr = xCorr + (bmWInternal - (xMax - xMin)) / 2;
-				yCorr = yCorr + (bmHInternal - (yMax - yMin)) / 2;
-				for (i = 0; i < nAtoms(); i++) {
-					getAtom(i)->rx = (getAtom(i)->rx - xMin) + xCorr;
-					getAtom(i)->ry = (getAtom(i)->ry - yMin) + yCorr;
-				};
-				dScale = 1;
-			}
-			else {
-				//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
-				if (((xMax - xMin) / bmWInternal) > ((yMax - yMin) / bmHInternal)) {
-					//X range is too high- squizeeng by X
-					dScale = (xMax - xMin) / bmWInternal;        //small scale  - will be divider...
-					xCorr = svgMarginXPix;
-					yCorr = (yMax - yMin) / dScale;
-					yCorr = (bmHeight - yCorr) / 2;
-				}
-				else {
-					dScale = (yMax - yMin) / bmHInternal;
-					yCorr = svgMarginYPix;
-					xCorr = (xMax - xMin) / dScale;
-					xCorr = (bmWidth - xCorr) / 2;
-				};
-				for (i=0; i<nAtoms(); i++){
-					getAtom(i)->rx = (getAtom(i)->rx - xMin) + xCorr;
-					getAtom(i)->ry = (getAtom(i)->ry - yMin) + yCorr;
-				};
+		}else{
+			dNorm = (nBonds() == 0)?(averageAtomDistance() / 2):averageBondLength();
+			scaleAtoms(fRecommendedBondLengthPix/dNorm,fRecommendedBondLengthPix/dNorm);
+			xMin = xMax = getAtom(0)->rx;
+			yMin = yMax = getAtom(0)->ry;
+			for (i = 0; i < nAtoms(); i++){
+				dd = getAtom(i)->rx;
+				if (dd < xMin){xMin = dd;}else{
+				if (dd > xMax) xMax = dd;}
+				dd = getAtom(i)->ry;
+				if (dd < yMin){yMin = dd;}else{
+				if (dd > yMax) yMax = dd;}
 			};
+			xCorr = svgMarginXPix;	dX=xMax-xMin;
+			yCorr = svgMarginYPix;	dY=yMax-yMin;
+			if ((dX <= bmWInternal) && (dY <= bmHInternal)) {
+				//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
+				dScale = 1;
+				xCorr += (bmWInternal - dX) / 2;
+				yCorr += (bmHInternal - dY) / 2;
+			}else{	//MUST NOT be norm-all bond lengthes were calculated accoedinly recommented bond lenght
+				if((sX=dX/bmWInternal)>(sY=dY/bmHInternal)){//X range is too high- squizeeng by X
+						dScale = sX;        //small scale  - will be divider...
+						xCorr = svgMarginXPix;
+						yCorr = (bmHeight - dY / dScale) / 2;
+				}else{	dScale = sY;
+						yCorr = svgMarginYPix;
+						xCorr = (bmWidth - dX / dScale) / 2;
+			};};
+			shiftAtoms(xCorr-xMin,yCorr-yMin);
 		};
 		parList.clear();
 		parList.push_back(std::to_string(bmWidth));
@@ -1458,47 +1867,149 @@ namespace MolStruct {
 		parList.push_back(std::to_string(fSVGFontHeight));
 		parList.push_back(fSVGFontFamilyName);
 		parList.push_back(s);
-		s = format("<g font-size=\"{}\" font-family=\"{}\" stroke=\"black\" stroke-width=\"1\" fill=\"black\" {}>", parList); //[RecommendedFontHeight, fontFamilyName, s]);
-		outBuffer.push_back(s);
+		
+		outBuffer.push_back(format("<g font-size=\"{}\" font-family=\"{}\" stroke=\"black\" stroke-width=\"1\" fill=\"black\" {}>", parList)); //[RecommendedFontHeight, fontFamilyName, s]);
 
 		parList.clear();
 		parList.push_back(std::to_string(bmWidth));
 		parList.push_back(std::to_string(bmHeight));
-		s = format("<rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" />", parList);
-		outBuffer.push_back(s);
 
-
-
-		s = svgSaveInternal(atomProperties, redBonds, ringList, arrowDrawIsotope, numerationDraw);
-		outBuffer.push_back(s);
+		outBuffer.push_back(format("<rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" />", parList));
+		outBuffer.push_back(svgSaveInternal(atomProperties, ringList, arrowDrawIsotope, numerationDraw));
 		outBuffer.push_back("</g>");
-		/*
-		if (true) {//(numerationDraw) {
-			parList[0] = std::to_string(fSVGFontHeight * 2 / 3);
-			s = format("<g font-size=\"{}\" font-family=\"{}\" stroke=\"black\" stroke-width=\"1\" fill=\"black\" {}>", parList);
-			//outBuffer.push_back(s);
-			for (i = 0; i < nAtoms(); i++) {
-				s= "("+std::to_string(i+1)+")";
-				parList.clear();
-				s1 = formatPrecision(getAtom(i)->rx, 1);
-				s2 = formatPrecision(getAtom(i)->ry, 1);
-				parList.push_back(s1);
-				parList.push_back(s2);
-				parList.push_back(s);
-
-				s = format("<text x=\"{}\" y=\"{}\">{}</text>", parList);  //[X-textWidth div 2,Y+(3*textHeight)div 2,s]);
-				outBuffer.push_back(s);
-
-			}
-			//outBuffer.push_back("</g>");
-		}
-		*/
 		outBuffer.push_back("</svg>");
 
 		return result;
 	};
 
-	std::string TSVGMolecule::cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw){
+
+	void groupElements(std::vector<std::string> & outBuffer, const std::vector<std::string> & elements, const std::string open="", const std::string close=""){if(elements.size() != 0){
+		int i;			if(open.length()){	outBuffer.push_back(open+">");};
+		for (i=0; i<elements.size(); i++)	outBuffer.push_back(elements[i]);
+											outBuffer.push_back(close);
+	}};
+
+	void TSVGMolecule::cb_svgSaveInternal(const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid) {
+
+		int n;
+	    double rr, rX, rY;
+		singleCenter bondCenter;
+		std::vector<singleCenter> moleculeCenters;
+		std::vector<std::string> params,polygonData,boxStrings,molStrings,atomProperties;
+		std::vector<int> * bondList;
+		std::vector<int> atomList;
+		std::string s, s1;
+
+		moleculeCenters.reserve(nBonds());
+		for (int i=0,nB=nBonds();i<nB;i++) moleculeCenters.push_back(bondCenter);
+		for (int i=0,sz=ringList.size();i<sz;i++){
+			rX = 0; rY = 0;
+			bondList = ringList[i];
+			bondListToAtomList(*bondList, atomList);
+			for (int j=0,sz=atomList.size();j<sz;j++){
+				n = atomList[j];
+				rX = rX + getAtom(n)->rx;
+				rY = rY + getAtom(n)->ry;
+			};
+			rX = rX / atomList.size();
+			rY = rY / atomList.size();
+			for (int j=0,sz=bondList->size();j<sz;j++){
+				n = (*bondList)[j];
+				bondCenter = moleculeCenters[n];
+				if (bondList->size() > bondCenter.cSize){
+					bondCenter.centerX = rX;
+					bondCenter.centerY = rY;
+					bondCenter.cSize = bondList->size();
+					moleculeCenters[n] = bondCenter;
+		};};};
+
+		// svg path preparation //
+		s = "";
+		rr = averageDistance();
+		s1= formatPrecision(fSVGLineWidth*svgPixPerInch + 1,2);
+		for(int w=0,nB=nBonds();w<nB;w++){s = s + bDrawerSVG(polygonData,w,rr,moleculeCenters);};
+		if (arrowDrawIsotope) {s = s + arrowDrawSVG(polygonData);};
+		
+		params.clear();
+		params.push_back(uid);
+		params.push_back(s1);
+		params.push_back(s);
+		molStrings.push_back(format("<path mask=\"url(#{})\" class=\""SVG_BOND_CLASS"\" stroke-width=\"{}\" d=\"{}\" />",params));
+			groupElements(molStrings,polygonData,"<g","</g>");
+
+		// atoms/backgrounds (letterStrings/boxStrings) //
+		n = 0;
+		for (int w=0,nA=nAtoms();w<nA;w++){
+			if (getAtom(w)->na != ID_ZVEZDA) {
+				n++;
+				s1 = std::to_string(n);
+			}	else s1 = "";
+			if (!numerationDraw) s1 = "";
+			aDrawerSVG(boxStrings,molStrings,w,fSVGFontHeight,atomProperties,arrowDrawIsotope,s1);
+		};
+		
+		params.clear();
+		params.push_back(uid);
+		
+		outBuffer.push_back(format("<mask id=\"{}\">\n<rect class=\""SVG_CANVAS_CLASS"\" style=\"width:110%;height:110%;\"></rect>",params));
+			groupElements(outBuffer,boxStrings);
+		outBuffer.push_back("</mask>");
+
+		params.clear();
+		params.push_back(std::to_string(fSVGFontHeight));
+			groupElements(outBuffer,molStrings,format("<g class=\""SVG_MOL_CLASS"\" font-size=\"{}\"",params),"</g>");
+	};
+
+
+
+
+	void TSVGMolecule::cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList,
+		std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css){if(nAtoms()>0){
+		std::vector<std::string> params;
+		std::string s;
+		int ii;
+		double dd, xMin, xMax, yMin, yMax;
+
+		if (nAtoms()==1){getAtom(0)->rx = getAtom(0)->ry = 0;};
+		xMin = xMax = getAtom(0)->rx;
+		yMin = yMax = getAtom(0)->ry;
+
+		dd = averageDistance();
+		scaleAtoms(fRecommendedBondLengthPix/dd,fRecommendedBondLengthPix/dd);
+		for (int i=0,nA=nAtoms();i<nA;i++){
+			dd = getAtom(i)->rx;
+			if (dd < xMin){xMin = dd;}else{
+			if (dd > xMax) xMax = dd;}
+			dd = getAtom(i)->ry;
+			if (dd < yMin){yMin = dd;}else{
+			if (dd > yMax) yMax = dd;}
+		};	shiftAtoms(-xMin,-yMin);
+		
+		if((bmWidth>=SVG_IMAGE_MIN_WIDTH)&&(bmHeight>=SVG_IMAGE_MIN_HEIGHT)){
+				params.clear();
+				params.push_back(std::to_string(bmWidth));
+				params.push_back(std::to_string(bmHeight));
+				s=format(" x=\"0\" y=\"0\" width=\"{}\"  height=\"{}\"",params);
+		}else 	s="";
+
+		params.clear();
+		params.push_back(s);
+		s=std::to_string(-fSVGFontHeight);
+		params.push_back(s);
+		params.push_back(s);
+		ii=fSVGFontHeight+fSVGFontHeight;
+		params.push_back(std::to_string(ii+(int)std::round(xMax-xMin+0.5)));
+		params.push_back(std::to_string(ii+(int)std::round(yMax-yMin+0.5)));
+		outBuffer.push_back(format("<svg{} viewBox=\"{} {} {} {}\" xmlns=\"http://www.w3.org/2000/svg\">", params));
+		outBuffer.push_back(format("<style>{}</style>",css));
+			cb_svgSaveInternal(ringList, outBuffer, arrowDrawIsotope, numerationDraw, uid);
+		outBuffer.push_back("</svg>");
+	};};
+
+
+/*
+	void TSVGMolecule::cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList,
+		std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css){
 		double dNorm, dd, dScale, xMin, xMax, yMin, yMax;
 		double xCorr, yCorr;
 		int i;
@@ -1508,12 +2019,10 @@ namespace MolStruct {
 		std::vector<std::string> parList, atomProperties;
 		std::vector<int> redBonds;
 
-		std::string result = "";
-
-		if (nAtoms() == 0) return result;
+		if (nAtoms() == 0) return;
 		bmWInternal = bmWidth - 2 * svgMarginXPix;
 		bmHInternal = bmHeight - 2 * svgMarginYPix;
-		if ((bmWInternal < 30) || (bmHInternal < 20)) return result;
+		if ((bmWInternal < 30) || (bmHInternal < 20)) return;
 
 		dNorm = averageBondLength();
 		if (nBonds() == 0) dNorm = 0;
@@ -1579,35 +2088,12 @@ namespace MolStruct {
 		parList.clear();
 		parList.push_back(std::to_string(bmWidth));
 		parList.push_back(std::to_string(bmHeight));
-		s = format("<svg viewbox=\"0 0 {} {}\"  xmlns=\"http://www.w3.org/2000/svg\">", parList);
-		outBuffer.push_back(s);
-		outBuffer.push_back("<style>@import url(css/chem-trep.svg.mol.css);</style>");
-		
-		s = "";
-		if (dScale != 1) {
-			dScale = 1 / dScale;
-			s= formatPrecision(dScale,5);
-			s = format("transform=\"scale({})\"", s);
-		};
-		parList.clear();
-		parList.push_back(std::to_string(fSVGFontHeight));
-		parList.push_back(fSVGFontFamilyName);
-		parList.push_back(s);
-		s = format("<g font-size=\"{}\" font-family=\"{}\" stroke=\"black\" stroke-width=\"1\" fill=\"black\" {}>", parList); //[RecommendedFontHeight, fontFamilyName, s]);
-		outBuffer.push_back(s);
-
-		parList.clear();
-		parList.push_back(std::to_string(bmWidth));
-		parList.push_back(std::to_string(bmHeight));
-		s = format("<rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" />", parList);
-		outBuffer.push_back(s);
-
-
-
-		s = svgSaveInternal(atomProperties, redBonds, ringList, arrowDrawIsotope, numerationDraw);
-		outBuffer.push_back(s);
-		outBuffer.push_back("</g>");
+		outBuffer.push_back(format("<svg viewbox=\"0 0 {} {}\"  xmlns=\"http://www.w3.org/2000/svg\">", parList));
+		outBuffer.push_back(format("<style>{}</style>",css));
+			cb_svgSaveInternal(atomProperties, redBonds, ringList, outBuffer, arrowDrawIsotope, numerationDraw, uid, dScale);
+		*/
 		/*
+//		outBuffer.push_back("<style>@import url(css/chem-trep.svg.mol.css);</style>");
 		outBuffer.push_back("<script data-fieldname=\"mdl-record\" type=\"text/plain\">");
 			outBuffer.push_back(rec);outBuffer.push_back("</script>");
 		outBuffer.push_back("<script data-fieldname=\"mw\" type=\"text/plain\">");
@@ -1617,9 +2103,10 @@ namespace MolStruct {
 		outBuffer.push_back("<script data-fieldname=\"formula\" type=\"text/plain\">");
 			outBuffer.push_back(getMolformula(true));outBuffer.push_back("</script>");
 		*/
+		/*
 		outBuffer.push_back("</svg>");
-		return result;
 	};
+*/
 
 
 
