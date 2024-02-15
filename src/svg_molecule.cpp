@@ -121,7 +121,7 @@ namespace MolStruct {
 
 
 
-	void TSVGMolecule::cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css){
+	void TSVGMolecule::cb_svgSave(std::vector<std::string> & svgData, std::vector<int>* bondLabel, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css){
 		std::vector<std::vector<int>*> ringList;
 		int nTotalCycles, nAromFive, nAromSixs, nCondensed;
 		int i,n;
@@ -145,7 +145,7 @@ namespace MolStruct {
 		}
 		allAboutCycles();
 		cyclesCalculate(nTotalCycles, nAromFive, nAromSixs, nCondensed, &ringList);
-		cb_getSVG(bmWidth,bmHeight,ringList,svgData,true,numerationOutput,uid,css);
+		cb_getSVG(bmWidth,bmHeight,ringList,svgData,bondLabel,true,numerationOutput,uid,css);
 	}
 
 
@@ -1962,9 +1962,92 @@ namespace MolStruct {
 
 
 
+	void TSVGMolecule::col_svgSaveInternal(const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, std::vector<int>* bondLabel, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid) {
+
+		int n;
+	    double rr, rX, rY;
+		singleCenter bondCenter;
+		std::vector<singleCenter> moleculeCenters;
+		std::vector<std::string> params,polygonData,boxStrings,molStrings,atomProperties;
+		std::vector<int> * bondList;
+		std::vector<int> atomList;
+		std::string s, s1, sc;
+
+		moleculeCenters.reserve(nBonds());
+		for (int i=0,nB=nBonds();i<nB;i++) moleculeCenters.push_back(bondCenter);
+		for (int i=0,sz=ringList.size();i<sz;i++){
+			rX = 0; rY = 0;
+			bondList = ringList[i];
+			bondListToAtomList(*bondList, atomList);
+			for (int j=0,sz=atomList.size();j<sz;j++){
+				n = atomList[j];
+				rX = rX + getAtom(n)->rx;
+				rY = rY + getAtom(n)->ry;
+			};
+			rX = rX / atomList.size();
+			rY = rY / atomList.size();
+			for (int j=0,sz=bondList->size();j<sz;j++){
+				n = (*bondList)[j];
+				bondCenter = moleculeCenters[n];
+				if (bondList->size() > bondCenter.cSize){
+					bondCenter.centerX = rX;
+					bondCenter.centerY = rY;
+					bondCenter.cSize = bondList->size();
+					moleculeCenters[n] = bondCenter;
+		};};};
+
+		// svg path preparation //
+		s=sc="M 0 0"; // a hack to render masks in svg with vertical lines
+		rr = averageDistance();
+		s1= formatPrecision(fSVGLineWidth*svgPixPerInch + 1,2);
+		
+		//std::vector<int>* bondLabel
+		for(int w=0,nB=nBonds();w<nB;w++){
+			if((*bondLabel)[w])	sc = sc + bDrawerSVG(polygonData,w,rr,moleculeCenters); else s = s + bDrawerSVG(polygonData,w,rr,moleculeCenters);
+		};
+		if (arrowDrawIsotope) {s = s + arrowDrawSVG(polygonData);};
+		
+		params.clear();
+		params.push_back(uid);
+		params.push_back(s1);
+		params.push_back(s);
+		molStrings.push_back(format("<path mask=\"url(#{})\" class=\""SVG_BOND_CLASS"\" stroke-width=\"{}\" d=\"{}\" />",params));
+
+		params.clear();
+		params.push_back(uid);
+		params.push_back(s1);
+		params.push_back(sc);
+		molStrings.push_back(format("<path mask=\"url(#{})\" class=\""SVG_BOND_CLASS" "SVG_HIT_CLASS"\" stroke-width=\"{}\" d=\"{}\" />",params));
+				
+			groupElements(molStrings,polygonData,"<g","</g>");
+
+		// atoms/backgrounds (letterStrings/boxStrings) //
+		n = 0;
+		for (int w=0,nA=nAtoms();w<nA;w++){
+			if (getAtom(w)->na != ID_ZVEZDA) {
+				n++;
+				s1 = std::to_string(n);
+			}	else s1 = "";
+			if (!numerationDraw) s1 = "";
+			aDrawerSVG(boxStrings,molStrings,w,fSVGFontHeight,atomProperties,arrowDrawIsotope,s1);
+		};
+		
+		params.clear();
+		params.push_back(uid);
+		
+		outBuffer.push_back(format("<mask id=\"{}\">\n<rect class=\""SVG_CANVAS_CLASS"\" style=\"width:110%;height:110%;\"></rect>",params));
+			groupElements(outBuffer,boxStrings);
+		outBuffer.push_back("</mask>");
+
+		params.clear();
+		params.push_back(std::to_string(fSVGFontHeight));
+			groupElements(outBuffer,molStrings,format("<g class=\""SVG_MOL_CLASS"\" font-size=\"{}\"",params),"</g>");
+	};
+
+
 
 	void TSVGMolecule::cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList,
-		std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css){if(nAtoms()>0){
+		std::vector<std::string> & outBuffer, std::vector<int>* bondLabel, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css){if(nAtoms()>0){
 		std::vector<std::string> params;
 		std::string s;
 		int ii;
@@ -2002,7 +2085,8 @@ namespace MolStruct {
 		params.push_back(std::to_string(ii+(int)std::round(yMax-yMin+0.5)));
 		outBuffer.push_back(format("<svg{} viewBox=\"{} {} {} {}\" xmlns=\"http://www.w3.org/2000/svg\">", params));
 		outBuffer.push_back(format("<style>{}</style>",css));
-			cb_svgSaveInternal(ringList, outBuffer, arrowDrawIsotope, numerationDraw, uid);
+		if(bondLabel)
+			col_svgSaveInternal(ringList, outBuffer, bondLabel, arrowDrawIsotope, numerationDraw, uid); else cb_svgSaveInternal(ringList, outBuffer, arrowDrawIsotope, numerationDraw, uid);
 		outBuffer.push_back("</svg>");
 	};};
 

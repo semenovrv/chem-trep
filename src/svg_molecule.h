@@ -16,6 +16,7 @@ namespace MolStruct {
 #define SVG_CANVAS_CLASS "chem-trep-mol-canvas"
 #define SVG_ATOM_CLASS "chem-trep-mol-atom"
 #define SVG_BOND_CLASS "chem-trep-mol-bond"
+#define SVG_HIT_CLASS "chem-trep-mol-hit"
 #define SVG_MOL_ID "atoms"
 #define SVG_INLINE_CSS "\n"\
 " circle.chem-trep-mol-canvas\n"\
@@ -47,7 +48,7 @@ protected:
 	void aDrawerSVG(std::vector<std::string> & boxOut, std::vector<std::string> & lettersOut, int atomN, int fontSize, const std::vector<std::string> & atomProperties, bool  arrowDrawIsotope, const std::string aNum) const;
 	std::string svgSaveInternal(const std::vector<std::string> & atomProperties, const std::vector<std::vector<int>*> & ringList, bool  arrowDrawIsotope, bool numerationDraw);
 	void cb_svgSaveInternal(const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid);
-
+	void col_svgSaveInternal(const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, std::vector<int>* bondLabel, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid);
 	int getTextWidthLarge(const std::string & data) const;
 	int getTextWidthSmall(const std::string & data) const;
 	double cosB(int b1, int b2) const;
@@ -84,8 +85,8 @@ public:
 	double averageDistance();
 
 	std::string    getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw);
-	void 		cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css);
-	void		cb_svgSave(std::vector<std::string> & svgData, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css = SVG_INLINE_CSS);
+	void 		cb_getSVG(int bmWidth, int bmHeight, const std::vector<std::vector<int>*> & ringList, std::vector<std::string> & outBuffer, std::vector<int>* bondLabel, bool  arrowDrawIsotope, bool numerationDraw, const std::string uid, const std::string css);
+	void		cb_svgSave(std::vector<std::string> & svgData, std::vector<int>* bondLabel, bool numerationOutput,int bmWidth, int bmHeight, const std::string uid, const std::string css = SVG_INLINE_CSS);
 	TSVGMolecule() : TSimpleMolecule() {
 		svgDefaultAtomBackColor = "white";// RGB(255, 255, 255)";
 		svgDefaultAtomFontColor = "black";// RGB(0, 0, 0)";

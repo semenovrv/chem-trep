@@ -37,16 +37,19 @@ void Execute() override{
 std::istringstream mis(mol);
 MolStruct::TSVGMolecule smol;
 if(smol.readMolfile(mis)&&smol.nAtoms()>0){
+	std::vector<int> bondLabel;
+	bondLabel.reserve(((MolStruct::TEditedMolecule*)query)->nBonds());
 	smol.defineAtomConn();
 	smol.allAboutCycles();
-	if(result=((MolStruct::TEditedMolecule*)query)->fragmentSearch(&smol,NULL)){
+	if(result=((MolStruct::TEditedMolecule*)query)->fragmentSearch(&smol,&bondLabel)){
 		formula=smol.getMolformula(true);
 		mw=smol.getMolWeight(false);
 		if(((Search_Mode*)mode)->mode==SVG_MODE){
 			std::vector<std::string> data;
 //			MolStruct::svgPolymerSave(smol,data,mol,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height);
 			//printf("cb_svgSave %s\n",((Search_Mode*)mode)->css.c_str());
-			smol.cb_svgSave(data,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height,"atoms",((Search_Mode*)mode)->css);
+			//smol.cb_svgSave(data,NULL,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height,"atoms",((Search_Mode*)mode)->css);
+			smol.cb_svgSave(data,&bondLabel,((Search_Mode*)mode)->numerationDraw,((Search_Mode*)mode)->width,((Search_Mode*)mode)->height,"atoms",((Search_Mode*)mode)->css);
 			std::string svg=data.size()?data[0]:"";
 			for(size_t ii=1,i1=data.size();ii<i1;++ii){svg+="\n";svg+=data[ii];}
 			res=svg;
